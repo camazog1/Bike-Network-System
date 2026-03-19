@@ -15,25 +15,6 @@ System for bike rental management and cycling activity promotion. Includes event
 | Developer 4 | Jhonnathan Ocampo |
 | QA | Oswaldo Alzate |
 
-## Repository Structure
-
-```
-bike-network-system/
-├── docs/
-│   ├── architecture/
-│      ├── requirements.md
-│      ├── context-diagram.png
-│      ├── use-case-diagram.png
-│      ├── component-diagram.png
-│      ├── sequence-diagrams.png
-│      └── deployment-diagram.png
-├── backend/
-├── frontend/
-├── .github/
-├── .gitignore
-└── README.md
-```
-
 ## Deliverables
 
 ### 1. Functional Requirements
