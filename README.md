@@ -91,7 +91,8 @@ bike-network-system/
 ### 5. Component Diagram (Logical and Technical)
 ### 6. Sequence Diagrams
 ### 7. Deployment Diagram
-<img width="1982" height="1864" alt="Diagrama de despliegue finall" src="https://github.com/user-attachments/assets/30ed249c-8126-4b0f-8119-9a4a9dd68ab5" />
+![Deployment Diagram](https://github.com/user-attachments/assets/a0180206-1755-426e-88de-9377a7aa9db3)
+
 
 ## Architecture Decisions
 
