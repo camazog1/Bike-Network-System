@@ -71,7 +71,7 @@ System for bike rental management and cycling activity promotion. Includes event
 
 ### 4. User Stories
 
-> Refer to the repository issues
+https://github.com/users/camazog1/projects/9
 
 ### 5. Component Diagram (Logical and Technical)
 
