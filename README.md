@@ -77,6 +77,18 @@ System for bike rental management and cycling activity promotion. Includes event
 
 ### 6. Sequence Diagrams
 
+#### User Authentication
+
+<img width="7840" height="4935" alt="User Authentication-2026-03-20-023028" src="https://github.com/user-attachments/assets/203f80b4-90e8-4902-b368-8cfa80d16e95" />
+
+#### Bike Rental by Authenticated User 
+
+<img width="8192" height="3051" alt="Bike Rental by Authenticated User-2026-03-20-022007" src="https://github.com/user-attachments/assets/4d5088ca-d572-47ce-b1c0-286da68b201f" />
+
+#### Events & Map Consultation
+
+<img width="8192" height="5614" alt="Events   Map Consultation-2026-03-20-022235" src="https://github.com/user-attachments/assets/e2373773-e7b9-4155-827c-9cdc838a2ce0" />
+
 ### 7. Deployment Diagram
 
 ![Deployment Diagram](https://github.com/user-attachments/assets/a0180206-1755-426e-88de-9377a7aa9db3)
