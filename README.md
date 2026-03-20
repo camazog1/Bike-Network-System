@@ -91,7 +91,8 @@ https://github.com/users/camazog1/projects/9
 
 ### 7. Deployment Diagram
 
-![Deployment Diagram](https://github.com/user-attachments/assets/a0180206-1755-426e-88de-9377a7aa9db3)
+![Deployment Diagram](https://github.com/user-attachments/assets/c0d8136e-3f89-4aa8-8446-667d2ed14acd)
+
 
 ## Architecture Decisions
 
