@@ -75,6 +75,8 @@ https://github.com/users/camazog1/projects/9
 
 ### 5. Component Diagram (Logical and Technical)
 
+<img width="3288" height="2964" alt="image" src="https://github.com/camazog1/Bike-Network-System/blob/main/docs/architecture/Diagrama%20de%20Componentes.png?raw=true" />
+
 ### 6. Sequence Diagrams
 
 #### User Authentication
