@@ -83,4 +83,8 @@ https://github.com/users/camazog1/projects/9
 
 ### Architectural Decision: Cloud Infrastructure & Deployment
 
+[docs/Architectural Decision: Cloud Infrastructure & Deployment.md](https://github.com/camazog1/Bike-Network-System/blob/main/docs/Architectural%20Decision%20Cloud%20Infrastructure%20%26%20Deployment.md)
+
 ### Architectural Decision: Technology Stack & Development Practices
+
+[docs/Architectural Decision: Technology Stack & Development Practices.md](https://github.com/camazog1/Bike-Network-System/blob/main/docs/Architectural%20Decision%20Technology%20Stack%20%26%20Development%20Practices.md)
