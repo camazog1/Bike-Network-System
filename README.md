@@ -75,6 +75,8 @@ https://github.com/users/camazog1/projects/9
 
 ### 5. Component Diagram (Logical and Technical)
 
+<img width="2483" height="1784" alt="Untitled (1)" src="https://raw.githubusercontent.com/camazog1/Bike-Network-System/refs/heads/main/docs/DiagramComponent.png" />
+
 ### 6. Sequence Diagrams
 
 ### 7. Deployment Diagram
