@@ -10,7 +10,7 @@ System for bike rental management and cycling activity promotion. Includes event
 | ------------- | ------------------- |
 | Product Owner | Carlos Alberto Mazo |
 | Scrum Master  | Patricia Arango     |
-| Developer 1   | Jehison Cifuentes    |
+| Developer 1   | Jehison David Cifuentes    |
 | Developer 3   | Miguel Vasquez      |
 | Developer 4   | Jhonnathan Ocampo   |
 | QA            | Oswaldo Alzate      |
