@@ -79,6 +79,12 @@ https://github.com/users/camazog1/projects/9
 
 ### 6. Sequence Diagrams
 
+<img width="2483" height="1784" alt="Untitled (1)" src="https://raw.githubusercontent.com/camazog1/Bike-Network-System/refs/heads/main/docs/sequence_diagrams_user.png" />
+
+<img width="2483" height="1784" alt="Untitled (1)" src="https://raw.githubusercontent.com/camazog1/Bike-Network-System/refs/heads/main/docs/sequence_diagrams_rent.png" />
+
+<img width="2483" height="1784" alt="Untitled (1)" src="https://raw.githubusercontent.com/camazog1/Bike-Network-System/refs/heads/main/docs/sequence_diagrams_Map_bikes.png" />
+
 ### 7. Deployment Diagram
 
 <img width="2483" height="1784" alt="Untitled (1)" src="https://github.com/user-attachments/assets/35c0a090-4014-45ec-b37f-bc731c54868c" />
