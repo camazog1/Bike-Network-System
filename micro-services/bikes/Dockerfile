@@ -22,6 +22,9 @@ COPY --from=builder /build/.venv /app/.venv
 COPY --from=builder /build/app ./app
 COPY --from=builder /build/main.py ./
 COPY --from=builder /build/migrations ./migrations
+COPY entrypoint.sh ./
+
+RUN chmod +x entrypoint.sh
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV FLASK_APP=main.py
@@ -30,4 +33,4 @@ EXPOSE 8080
 
 USER app
 
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]
+ENTRYPOINT ["./entrypoint.sh"]
