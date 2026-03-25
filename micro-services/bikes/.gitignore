@@ -32,3 +32,4 @@ htmlcov/
 .specify/
 .claude/
 CLAUDE.md
+specs/
