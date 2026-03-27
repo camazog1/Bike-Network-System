@@ -35,6 +35,30 @@ def register_error_handlers(app):
             "details": {},
         }), 500
 
+    @app.errorhandler(502)
+    def bad_gateway(e):
+        return jsonify({
+            "code": "BROKER_REPLY_REJECTED",
+            "message": str(e.description) if hasattr(e, "description") else "Broker reply rejected.",
+            "details": {},
+        }), 502
+
+    @app.errorhandler(503)
+    def service_unavailable(e):
+        return jsonify({
+            "code": "BROKER_UNAVAILABLE",
+            "message": str(e.description) if hasattr(e, "description") else "Broker unavailable.",
+            "details": {},
+        }), 503
+
+    @app.errorhandler(504)
+    def gateway_timeout(e):
+        return jsonify({
+            "code": "BROKER_REPLY_TIMEOUT",
+            "message": str(e.description) if hasattr(e, "description") else "Broker reply timeout.",
+            "details": {},
+        }), 504
+
     @app.errorhandler(ValidationError)
     def handle_pydantic_validation(e):
         errors = e.errors()
