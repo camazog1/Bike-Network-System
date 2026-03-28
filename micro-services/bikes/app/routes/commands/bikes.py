@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, abort, current_app, jsonify, request
 from pydantic import ValidationError
 
 from app.repositories.bike_repository import BikeRepository
@@ -28,6 +28,23 @@ def create_bike():
             } for err in errors]},
         }), 422
 
+    rabbitmq = current_app.rabbitmq
+    if rabbitmq is not None:
+        from app.services.rabbitmq_service import (
+            BrokerReplyRejectedError,
+            BrokerReplyTimeoutError,
+            BrokerUnavailableError,
+        )
+
+        try:
+            rabbitmq.publish_bike_created(data)
+        except BrokerUnavailableError:
+            abort(503, description="Broker unavailable.")
+        except BrokerReplyTimeoutError:
+            abort(504, description="Broker reply timeout.")
+        except BrokerReplyRejectedError:
+            abort(502, description="Broker reply rejected.")
+
     service = _get_service()
     response = service.create_bike(data)
     return jsonify(response.model_dump(mode="json")), 201
@@ -56,6 +73,23 @@ def update_bike(id):
 
 @commands_bp.route("/api/v1/bikes/<string:id>", methods=["DELETE"])
 def delete_bike(id):
+    rabbitmq = current_app.rabbitmq
+    if rabbitmq is not None:
+        from app.services.rabbitmq_service import (
+            BrokerReplyRejectedError,
+            BrokerReplyTimeoutError,
+            BrokerUnavailableError,
+        )
+
+        try:
+            rabbitmq.publish_bike_deleted(id)
+        except BrokerUnavailableError:
+            abort(503, description="Broker unavailable.")
+        except BrokerReplyTimeoutError:
+            abort(504, description="Broker reply timeout.")
+        except BrokerReplyRejectedError:
+            abort(502, description="Broker reply rejected.")
+
     service = _get_service()
     service.delete_bike(id)
     return "", 204

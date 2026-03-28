@@ -33,4 +33,14 @@ def create_app(config=None):
     app.register_blueprint(queries_bp)
     app.register_blueprint(health_bp)
 
+    # RabbitMQ broker integration
+    if app.config.get("RABBITMQ_ENABLED", False):
+        from app.services.rabbitmq_service import RabbitMQService
+        rabbitmq = RabbitMQService()
+        rabbitmq.init_app(app)
+        app.rabbitmq = rabbitmq
+        rabbitmq._start_consumer_thread()
+    else:
+        app.rabbitmq = None
+
     return app
