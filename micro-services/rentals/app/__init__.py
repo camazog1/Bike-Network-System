@@ -24,15 +24,24 @@ def create_app():
             with db.engine.connect() as conn:
                 conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS rentals (
-                        rental_id VARCHAR(36) NOT NULL,
-                        user_id VARCHAR(36) NOT NULL,
-                        bike_id VARCHAR(36) NOT NULL,
-                        start_time DATETIME NOT NULL,
-                        status VARCHAR(20) NOT NULL,
+                        rental_id  VARCHAR(36)  NOT NULL,
+                        user_id    VARCHAR(36)  NOT NULL,
+                        bike_id    VARCHAR(36)  NOT NULL,
+                        start_time DATETIME     NOT NULL,
+                        end_time   DATETIME     NULL,
+                        status     VARCHAR(20)  NOT NULL,
                         PRIMARY KEY (rental_id)
                     )
                 """))
                 conn.commit()
+                try:
+                    conn.execute(text(
+                        "ALTER TABLE rentals ADD COLUMN end_time DATETIME NULL"
+                    ))
+                    conn.commit()
+                    logger.info("Columna end_time agregada.")
+                except Exception:
+                    conn.rollback()
             logger.info("Tabla rentals lista.")
         else:
             db.create_all()
@@ -41,6 +50,7 @@ def create_app():
     app.register_blueprint(rental_bp)
 
     return app
+
 
 def _wait_for_db(app, retries=10, delay=3):
     for attempt in range(1, retries + 1):

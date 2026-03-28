@@ -1,10 +1,12 @@
 import logging
+from datetime import datetime, timezone
 from app import db
 from app.models.rental import Rental
 from app.services.bike_service import get_bike
-from app.messaging.publisher import publish_rental_started
+from app.messaging.publisher import publish_rental_started, publish_rental_ended
 
 logger = logging.getLogger(__name__)
+
 
 def create_rental(user_id: str, bike_id: str) -> dict:
     # 1. Verificar que la bici existe
@@ -26,7 +28,6 @@ def create_rental(user_id: str, bike_id: str) -> dict:
     try:
         publish_rental_started(rental.to_dict())
     except Exception as e:
-        # Si falla RabbitMQ se hace rollback
         db.session.delete(rental)
         db.session.commit()
         logger.error(f"Rollback rental {rental.rental_id} por fallo en RabbitMQ: {e}")
@@ -34,9 +35,49 @@ def create_rental(user_id: str, bike_id: str) -> dict:
 
     return rental.to_dict()
 
+
+def return_rental(rental_id: str) -> dict:
+    # 1. Buscar el rental
+    rental = Rental.query.get(rental_id)
+    if rental is None:
+        raise RentalNotFoundException(f"Rental {rental_id} no encontrado.")
+
+    # 2. Verificar que no esté ya completado
+    if rental.status == "COMPLETED":
+        raise RentalAlreadyCompletedException(f"Rental {rental_id} ya fue completado.")
+
+    # 3. Cerrar el rental
+    rental.status   = "COMPLETED"
+    rental.end_time = datetime.now(timezone.utc)
+    db.session.commit()
+    logger.info(f"Rental completado: {rental.rental_id}")
+
+    # 4. Publicar evento rental.ended a RabbitMQ
+    try:
+        publish_rental_ended(rental.to_dict())
+    except Exception as e:
+        # Rollback: revertir el cierre del rental
+        rental.status   = "ACTIVE"
+        rental.end_time = None
+        db.session.commit()
+        logger.error(f"Rollback return {rental.rental_id} por fallo en RabbitMQ: {e}")
+        raise
+
+    return rental.to_dict()
+
+
 # Excepciones propias del dominio
 class BikeNotFoundException(Exception):
     pass
 
 class BikeUnavailableException(Exception):
+    pass
+
+class RentalNotFoundException(Exception):
+    pass
+
+class RentalAlreadyCompletedException(Exception):
+    pass
+
+class RentalServiceError(Exception):
     pass
