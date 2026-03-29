@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-import useFetchBikes from './hooks/useFetchBikes';
-import BikeList from './components/BikeList';
+import { Link } from "react-router-dom";
+import useFetchBikes from "./hooks/useFetchBikes";
+import BikeList from "./components/BikeList";
 
 export default function Bikes() {
-  const { data: bikes, isLoading, isError } = useFetchBikes();
+  const { data, isLoading, isError } = useFetchBikes();
 
   return (
     <div>
@@ -16,7 +16,7 @@ export default function Bikes() {
           Add Bike
         </Link>
       </div>
-      <BikeList bikes={bikes ?? []} isLoading={isLoading} isError={isError} />
+      <BikeList bikeData={data} isLoading={isLoading} isError={isError} />
     </div>
   );
 }

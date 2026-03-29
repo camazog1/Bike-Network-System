@@ -12,3 +12,10 @@ export interface BikePayload {
   type: string;
   status?: string;
 }
+
+export type BikeData = {
+  bikes: Bike[];
+  page: number;
+  page_size: number;
+  total: number;
+};

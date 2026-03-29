@@ -1,15 +1,20 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import type { Bike } from '../types';
-import BikeDeleteDialog from './BikeDeleteDialog';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import type { Bike } from "../types";
+import BikeDeleteDialog from "./BikeDeleteDialog";
+import type { BikeData } from "../types";
 
 interface BikeListProps {
-  bikes: Bike[];
+  bikeData?: BikeData;
   isLoading: boolean;
   isError: boolean;
 }
 
-export default function BikeList({ bikes, isLoading, isError }: BikeListProps) {
+export default function BikeList({
+  bikeData,
+  isLoading,
+  isError,
+}: BikeListProps) {
   const [deletingBike, setDeletingBike] = useState<Bike | null>(null);
 
   if (isLoading) {
@@ -17,13 +22,15 @@ export default function BikeList({ bikes, isLoading, isError }: BikeListProps) {
   }
 
   if (isError) {
-    return <p className="text-danger-400">Failed to load bikes. Please try again.</p>;
+    return (
+      <p className="text-danger-400">Failed to load bikes. Please try again.</p>
+    );
   }
 
-  if (bikes.length === 0) {
+  if (bikeData && bikeData.bikes.length === 0) {
     return (
       <p className="text-text-muted">
-        No bikes yet.{' '}
+        No bikes yet.{" "}
         <Link to="/bikes/new" className="text-brand-500 hover:text-brand-600">
           Add your first bike &rarr;
         </Link>
@@ -44,14 +51,20 @@ export default function BikeList({ bikes, isLoading, isError }: BikeListProps) {
           </tr>
         </thead>
         <tbody>
-          {bikes.map((bike) => (
-            <tr key={bike.id} className="border-b border-border hover:bg-surface-muted">
+          { bikeData && bikeData.bikes.map((bike) => (
+            <tr
+              key={bike.id}
+              className="border-b border-border hover:bg-surface-muted"
+            >
               <td className="px-3 py-2 text-text">{bike.name}</td>
               <td className="px-3 py-2 text-text">{bike.brand}</td>
               <td className="px-3 py-2 text-text">{bike.type}</td>
-              <td className="px-3 py-2 text-text">{bike.status ?? '—'}</td>
+              <td className="px-3 py-2 text-text">{bike.status ?? "—"}</td>
               <td className="px-3 py-2 flex gap-3">
-                <Link to={`/bikes/${bike.id}/edit`} className="text-brand-500 hover:text-brand-600">
+                <Link
+                  to={`/bikes/${bike.id}/edit`}
+                  className="text-brand-500 hover:text-brand-600"
+                >
                   Edit
                 </Link>
                 <button
