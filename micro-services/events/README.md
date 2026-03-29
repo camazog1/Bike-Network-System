@@ -57,8 +57,8 @@ Abre `http://localhost:8080` y entra con:
 
 - System: `MySQL`
 - Server: `db`
-- Username: `Admin_events`
-- Password: `events2026*`
+- Username: ``
+- Password: ``
 - Database: `events_db`
 
 ## Pruebas
