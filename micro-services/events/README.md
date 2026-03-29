@@ -15,11 +15,6 @@ La API usa Bearer tokens emitidos por Firebase Authentication:
 
 - `Authorization: Bearer <firebase_id_token>`
 
-Los endpoints administrativos requieren que el token incluya:
-
-- `admin: true`
-o
-- `role: "admin"`
 
 El microservicio valida el token con Firebase Admin SDK usando variables de entorno cargadas desde `.env`.
 
