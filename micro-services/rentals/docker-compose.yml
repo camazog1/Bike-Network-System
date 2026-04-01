@@ -15,26 +15,13 @@ services:
       timeout: 5s
       retries: 5
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rental-rabbitmq
-    ports:
-      - "5672:5672"    # conexión de la app
-      - "15672:15672"  # panel web de administración
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   rental-service:
     build: .
     container_name: rental-service
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       MYSQL_URI: mysql+pymysql://user:password@mysql:3306/rental_db
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
@@ -44,5 +31,11 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    networks:
+      - default
+      - broker_network
+
+networks:
+  broker_network:
+    external: true
+    name: broker_default
