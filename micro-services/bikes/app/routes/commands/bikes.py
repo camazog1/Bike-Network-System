@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from flask import Blueprint, abort, current_app, jsonify, request
 from pydantic import ValidationError
 
@@ -30,6 +32,9 @@ def create_bike():
             } for err in errors]},
         }), 422
 
+    service = _get_service()
+    response = service.create_bike(data)
+
     rabbitmq = current_app.rabbitmq
     if rabbitmq is not None:
         from app.services.rabbitmq_service import (
@@ -38,8 +43,17 @@ def create_bike():
             BrokerUnavailableError,
         )
 
+        pub = SimpleNamespace(
+            brand=data.brand,
+            type=data.type,
+            colour=data.colour,
+            state=data.state,
+            latitude=data.latitude,
+            longitude=data.longitude,
+            bike_id=response.id,
+        )
         try:
-            rabbitmq.publish_bike_created(data)
+            rabbitmq.publish_bike_created(pub)
         except BrokerUnavailableError:
             abort(503, description="Broker unavailable.")
         except BrokerReplyTimeoutError:
@@ -47,8 +61,6 @@ def create_bike():
         except BrokerReplyRejectedError:
             abort(502, description="Broker reply rejected.")
 
-    service = _get_service()
-    response = service.create_bike(data)
     return jsonify(response.model_dump(mode="json")), 201
 
 
@@ -71,6 +83,16 @@ def update_bike(id):
 
     service = _get_service()
     response = service.update_bike(id, data)
+
+    rabbitmq = current_app.rabbitmq
+    if rabbitmq is not None and data.state is not None:
+        from app.services.rabbitmq_service import BrokerUnavailableError
+
+        try:
+            rabbitmq.publish_bike_status_updated(response.id, response.state)
+        except BrokerUnavailableError:
+            abort(503, description="Broker unavailable.")
+
     return jsonify(response.model_dump(mode="json")), 200
 
 
