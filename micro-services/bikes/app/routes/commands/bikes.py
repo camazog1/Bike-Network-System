@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, current_app, jsonify, request
 from pydantic import ValidationError
 
+from app.auth import require_authentication
 from app.repositories.bike_repository import BikeRepository
 from app.schemas.bike import BikeCreate, BikeUpdate
 from app.services.bike_service import BikeService
@@ -13,6 +14,7 @@ def _get_service() -> BikeService:
 
 
 @commands_bp.route("/api/v1/bikes", methods=["POST"])
+@require_authentication
 def create_bike():
     try:
         data = BikeCreate.model_validate(request.get_json())
@@ -51,6 +53,7 @@ def create_bike():
 
 
 @commands_bp.route("/api/v1/bikes/<string:id>", methods=["PUT"])
+@require_authentication
 def update_bike(id):
     try:
         data = BikeUpdate.model_validate(request.get_json())
@@ -72,6 +75,7 @@ def update_bike(id):
 
 
 @commands_bp.route("/api/v1/bikes/<string:id>", methods=["DELETE"])
+@require_authentication
 def delete_bike(id):
     rabbitmq = current_app.rabbitmq
     if rabbitmq is not None:

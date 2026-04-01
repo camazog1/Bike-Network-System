@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from app.auth import require_authentication
 from app.models.bike import BikeState, BikeType
 from app.repositories.bike_repository import BikeRepository
 from app.services.bike_service import BikeService
@@ -13,6 +14,7 @@ def _get_service() -> BikeService:
 
 
 @queries_bp.route("/api/v1/bikes", methods=["GET"])
+@require_authentication
 def list_bikes():
     page, page_size, _ = parse_pagination(request.args)
 
@@ -47,6 +49,7 @@ def list_bikes():
 
 
 @queries_bp.route("/api/v1/bikes/<string:id>", methods=["GET"])
+@require_authentication
 def get_bike(id):
     service = _get_service()
     response = service.get_bike(id)

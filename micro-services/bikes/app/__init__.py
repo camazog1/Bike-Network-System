@@ -20,6 +20,9 @@ def create_app(config=None):
     db.init_app(app)
     migrate.init_app(app, db)
 
+    from app.firebase import initialize_firebase
+    initialize_firebase(app)
+
     # Import models so Alembic can detect them
     from app.models import bike  # noqa: F401
 
