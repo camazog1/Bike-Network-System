@@ -46,6 +46,9 @@ def create_app():
         else:
             db.create_all()
 
+        from app.auth.firebase import initialize_firebase
+        initialize_firebase(app)
+
     from app.routes.rental_routes import rental_bp
     app.register_blueprint(rental_bp)
 

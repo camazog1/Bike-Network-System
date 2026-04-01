@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from app.auth.decorators import require_authentication
 from app.services.rental_service import (
     create_rental,
     return_rental,
@@ -12,6 +13,7 @@ rental_bp = Blueprint("rental", __name__)
 
 
 @rental_bp.route("/api/v1/rental", methods=["POST"])
+@require_authentication
 def create_rental_route():
 
     data = request.get_json(silent=True)
@@ -46,6 +48,7 @@ def create_rental_route():
 
 
 @rental_bp.route("/api/v1/rental/<string:rental_id>/return", methods=["PATCH"])
+@require_authentication
 def return_rental_route(rental_id):
 
     if not rental_id or not rental_id.strip():
