@@ -1,4 +1,7 @@
+from unittest.mock import MagicMock
+
 from app import db
+from app.messaging.bike_status_updated import handle_bike_status_updated
 from app.models.location import BikeLocation, LocationStatus
 
 
@@ -44,3 +47,32 @@ class TestAvailableLocationsAPI:
             "latitude": 6.2442,
             "longitude": -75.5812,
         }
+
+    def test_status_updated_handler_hides_bike_from_available_list(self, client):
+        with client.application.app_context():
+            db.session.add(
+                BikeLocation(
+                    bike_id="US23-int",
+                    latitude=6.0,
+                    longitude=-75.0,
+                    status=LocationStatus.available,
+                )
+            )
+            db.session.commit()
+
+        channel = MagicMock()
+        method = MagicMock()
+        method.delivery_tag = 99
+        props = MagicMock()
+        props.reply_to = None
+        payload = {"bikeId": "US23-int", "status": "unavailable"}
+
+        with client.application.app_context():
+            handle_bike_status_updated(
+                client.application, payload, channel, method, props
+            )
+
+        response = client.get("/api/v1/locations/available")
+        assert response.status_code == 200
+        ids = {item["bikeId"] for item in response.get_json()}
+        assert "US23-int" not in ids

@@ -4,11 +4,14 @@ from unittest.mock import MagicMock, patch, PropertyMock
 import pytest
 import pika.exceptions
 
+from app.models.bike import BikeState
+
 from app.services.rabbitmq_service import (
     BrokerReplyRejectedError,
     BrokerReplyTimeoutError,
     BrokerUnavailableError,
     RabbitMQService,
+    bike_state_to_map_location_status,
 )
 
 
@@ -347,6 +350,61 @@ class TestPublishBikeDeleted:
             rabbitmq_service.publish_bike_deleted("some-id")
 
 
+class TestBikeStateToMapLocationStatus:
+    def test_free_maps_to_available(self):
+        assert bike_state_to_map_location_status(BikeState.Free) == "available"
+
+    def test_rented_maps_to_unavailable(self):
+        assert bike_state_to_map_location_status(BikeState.Rented) == "unavailable"
+
+
+class TestPublishBikeStatusUpdated:
+    """US23: one-way publish to bike.statusUpdated queue."""
+
+    @patch.object(RabbitMQService, "_connect")
+    def test_publish_bike_status_updated_rented(self, mock_connect, rabbitmq_service):
+        mock_connection = MagicMock()
+        mock_channel = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.channel.return_value = mock_channel
+        type(mock_connection).is_open = PropertyMock(return_value=True)
+
+        rabbitmq_service.publish_bike_status_updated(
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6", BikeState.Rented
+        )
+
+        mock_channel.basic_publish.assert_called_once()
+        call_kwargs = mock_channel.basic_publish.call_args.kwargs
+        assert call_kwargs["exchange"] == ""
+        assert call_kwargs["routing_key"] == "bike.statusUpdated"
+        body = json.loads(call_kwargs["body"])
+        assert body["event_type"] == "bike.statusUpdated"
+        assert body["bikeId"] == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        assert body["status"] == "unavailable"
+        assert "timestamp" in body
+        assert call_kwargs["properties"].reply_to is None
+
+    @patch.object(RabbitMQService, "_connect")
+    def test_publish_bike_status_updated_free(self, mock_connect, rabbitmq_service):
+        mock_connection = MagicMock()
+        mock_channel = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.channel.return_value = mock_channel
+        type(mock_connection).is_open = PropertyMock(return_value=True)
+
+        rabbitmq_service.publish_bike_status_updated("bid-x", BikeState.Free)
+
+        body = json.loads(mock_channel.basic_publish.call_args.kwargs["body"])
+        assert body["status"] == "available"
+
+    @patch.object(RabbitMQService, "_connect")
+    def test_publish_bike_status_updated_connection_failure(self, mock_connect, rabbitmq_service):
+        mock_connect.side_effect = pika.exceptions.AMQPConnectionError("refused")
+
+        with pytest.raises(BrokerUnavailableError):
+            rabbitmq_service.publish_bike_status_updated("id", BikeState.Free)
+
+
 class TestOnRentalStarted:
     """T019: Unit tests for _on_rental_started / _handle_rental_event."""
 
@@ -600,3 +658,11 @@ class TestDisabledMode:
 
         with pytest.raises(BrokerUnavailableError):
             service.publish_bike_deleted("some-id")
+
+    def test_publish_bike_status_updated_disabled_raises(self, app):
+        """When disabled, publish_bike_status_updated raises BrokerUnavailableError."""
+        service = RabbitMQService()
+        service._enabled = False
+
+        with pytest.raises(BrokerUnavailableError):
+            service.publish_bike_status_updated("some-id", BikeState.Free)

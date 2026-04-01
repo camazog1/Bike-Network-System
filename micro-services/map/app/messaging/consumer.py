@@ -47,6 +47,7 @@ def consume_forever(
             payload = json.loads(body.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
             logger.error("Invalid JSON on %s: %s", routing_key, e)
+            # Solo responder por RPC si el publicador espera reply (p. ej. bike.created).
             if properties.reply_to:
                 send_rpc_reply(
                     ch,

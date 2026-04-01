@@ -96,7 +96,7 @@ Tabla **`locations`** (MySQL, esquema `geo_db` en despliegue objetivo):
 
 ---
 
-## Contrato congelado — `bike.created` (US22), versión 1
+## Contrato congelado — `bike.created`
 
 **Fuente de verdad** para Bike CRUD, Map y quien integre el broker. Cualquier cambio incrementa la **versión** del contrato y debe coordinarse entre equipos.
 
@@ -113,7 +113,7 @@ Bike CRUD publica el mensaje en la cola `bike.created` usando el patrón **reque
 El **Location Microservice (Map)** debe:
 
 1. Consumir el mensaje de la cola acordada (`bike.created`).
-2. Procesar el JSON (validar, persistir en `locations` según reglas de US22).
+2. Procesar el JSON (validar, persistir en `locations`).
 3. Publicar la **respuesta RPC** en el exchange por defecto (`""`) con `routing_key = reply_to`, usando el mismo `correlation_id` en las propiedades del mensaje de respuesta.
 4. El cuerpo de la respuesta es siempre JSON (éxito o error).
 
@@ -169,7 +169,7 @@ Cuando el Map **no** puede completar el procesamiento de forma satisfactoria (p.
 
 **Efecto en Bike CRUD:** el código actual interpreta cualquier respuesta cuyo `status` (en minúsculas) **no** sea `ok` como **rechazo** (`BrokerReplyRejectedError`), lo que en el flujo de creación de bici puede traducirse en **fallo del `POST`** (p. ej. HTTP 502 según rutas). Es decir: **sí**, si el Map responde `status: error`, el alta en Bike CRUD **no** se considera exitosa desde el punto de vista del RPC.
 
-### Reglas de negocio US22 (recordatorio)
+### Reglas de negocio
 
 - Faltan coordenadas o payload inválido: **no** crear fila en `locations`, **log** de error, respuesta RPC **`status: error`** (y proceso del consumidor **no** debe caerse).
 - `bike_id` ya existente en `locations`: **no** duplicar ni modificar; respuesta RPC **`status: ok`** (idempotencia).
@@ -181,27 +181,46 @@ Cuando el Map **no** puede completar el procesamiento de forma satisfactoria (p.
 
 El servicio puede consumir otras colas enlazadas a un exchange directo configurable (por defecto `bike_network.events`). Las **routing keys** y cuerpos deben alinearse con Bike CRUD y Rental.
 
-### `bike.created` (US22) — referencia rápida
+### `bike.created`
 
-Resumen: ver sección **Contrato congelado — `bike.created` (US22)** arriba.
+Resumen: ver sección **Contrato congelado — `bike.created`** arriba.
 
 ---
 
-### `bike.statusUpdated` (US23)
+### `bike.statusUpdated`
 
 Publicado por Bike CRUD al cambiar disponibilidad de la bici en el dominio de mapa.
+
+| Elemento | Valor |
+|----------|--------|
+| **Exchange** | Mismo que el resto de eventos (por defecto `bike_network.events`, tipo **direct**). |
+| **Routing key / cola** | `bike.statusUpdated` (configurable vía `RABBITMQ_ROUTING_KEY_BIKE_STATUS_UPDATED`). |
+| **Patrón** | Evento **sin RPC**: el Map **no** publica respuesta en `reply_to` (a diferencia de `bike.created`). |
 
 **Payload esperado (mínimo)**
 
 | Campo | Tipo | Obligatorio | Descripción |
 |-------|------|-------------|-------------|
-| `bikeId` | string | Sí | Identificador de la bici. |
-| `status` | string | Sí | Solo `available` o `unavailable`. |
+| `bikeId` | string | Sí* | Identificador de la bici. |
+| `status` | string | Sí | Solo `available` o `unavailable` (comparación sin distinguir mayúsculas). |
+
+\* También se acepta `bike_id` (snake_case) por compatibilidad con otros productores.
+
+**Mapeo desde Bike CRUD (dominio bicicleta → dominio mapa)**
+
+El microservicio Bikes modela el estado como `Free` | `Rented`. El mapa usa `available` | `unavailable`. La publicación desde Bike CRUD debe ser estable:
+
+| Estado en Bike CRUD | `status` en el evento (`bike.statusUpdated`) |
+|---------------------|-----------------------------------------------|
+| `Free` | `available` |
+| `Rented` | `unavailable` |
+
+Tras un `PUT` que incluya `state` en el cuerpo, Bike CRUD emite el evento con el estado **resultante** (incluso si coincide con el anterior; el Map trata la actualización de forma idempotente).
 
 **Comportamiento esperado**
 
 - Actualizar solo el campo `status` del registro existente.
-- Si no existe fila para `bikeId`: **log de warning**, sin cambios en BD.
+- Si no existe fila para el identificador: **log de warning**, sin cambios en BD.
 - Si `status` no es `available` ni `unavailable`: **log de error**, sin modificar la fila.
 
 ---
@@ -210,6 +229,7 @@ Publicado por Bike CRUD al cambiar disponibilidad de la bici en el dominio de ma
 
 | Routing key | Rol |
 |-------------|-----|
+| `bike.statusUpdated` | actualizar `status` en `locations` (`available` / `unavailable`). |
 | `bike.deleted` | Eliminar o marcar la ubicación asociada al `bikeId` (según decisión de equipo). |
 | `rental.completed` | Actualizar posición o estado según reglas de negocio acordadas. |
 
@@ -225,7 +245,7 @@ Las variables de entorno `RABBITMQ_ROUTING_KEY_*` permiten ajustar nombres sin c
 | `PORT` | Puerto HTTP del servicio (por defecto `8081`). |
 | `RABBITMQ_URL` | URL AMQP del broker. |
 | `RABBITMQ_EXCHANGE` | Exchange directo para bindings. |
-| `RABBITMQ_ROUTING_KEY_*` | Routing keys de cada cola consumida. |
+| `RABBITMQ_ROUTING_KEY_*` | Routing keys de cada cola consumida (incl. `RABBITMQ_ROUTING_KEY_BIKE_STATUS_UPDATED` → `bike.statusUpdated`). |
 | `ENABLE_RABBIT_CONSUMERS` | `1` / `true` / `yes` para arrancar consumidores en segundo plano. |
 
 ---

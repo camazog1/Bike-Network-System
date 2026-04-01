@@ -25,3 +25,11 @@ class LocationRepository:
         db.session.add(row)
         db.session.commit()
         return True
+
+    def update_status(self, bike_id: str, status: LocationStatus) -> bool:
+        row = self.get_by_bike_id(bike_id)
+        if row is None:
+            return False
+        row.status = status
+        db.session.commit()
+        return True

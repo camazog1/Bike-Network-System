@@ -23,6 +23,9 @@ class Config:
     RABBITMQ_ROUTING_KEY_RENTAL_COMPLETED = os.environ.get(
         "RABBITMQ_ROUTING_KEY_RENTAL_COMPLETED", "rental.completed"
     )
+    RABBITMQ_ROUTING_KEY_BIKE_STATUS_UPDATED = os.environ.get(
+        "RABBITMQ_ROUTING_KEY_BIKE_STATUS_UPDATED", "bike.statusUpdated"
+    )
     ENABLE_RABBIT_CONSUMERS = os.environ.get("ENABLE_RABBIT_CONSUMERS", "").lower() in (
         "1",
         "true",

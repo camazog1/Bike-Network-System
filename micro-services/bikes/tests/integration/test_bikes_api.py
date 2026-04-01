@@ -113,6 +113,30 @@ class TestUpdateBikeAPI:
         resp = client.post("/api/v1/bikes", json=_bike_json(state="Free"))
         return resp.get_json()["id"]
 
+    def test_update_state_publishes_bike_status_updated_when_rabbitmq_enabled(self, app, client):
+        from unittest.mock import MagicMock
+
+        from app.models.bike import BikeState
+
+        bike_id = self._create_bike(client)
+        mock_rmq = MagicMock()
+        app.rabbitmq = mock_rmq
+
+        response = client.put(f"/api/v1/bikes/{bike_id}", json={"state": "Rented"})
+        assert response.status_code == 200
+        mock_rmq.publish_bike_status_updated.assert_called_once_with(bike_id, BikeState.Rented)
+
+    def test_update_partial_colour_does_not_publish_status_event(self, app, client):
+        from unittest.mock import MagicMock
+
+        bike_id = self._create_bike(client)
+        mock_rmq = MagicMock()
+        app.rabbitmq = mock_rmq
+
+        response = client.put(f"/api/v1/bikes/{bike_id}", json={"colour": "Blue"})
+        assert response.status_code == 200
+        mock_rmq.publish_bike_status_updated.assert_not_called()
+
     def test_update_state_free_to_rented(self, client):
         bike_id = self._create_bike(client)
         response = client.put(f"/api/v1/bikes/{bike_id}", json={"state": "Rented"})

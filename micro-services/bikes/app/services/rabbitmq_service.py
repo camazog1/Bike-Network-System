@@ -7,7 +7,17 @@ from uuid import uuid4
 import pika
 import pika.exceptions
 
+from app.models.bike import BikeState
+
 logger = logging.getLogger(__name__)
+
+
+def bike_state_to_map_location_status(state: BikeState) -> str:
+    if state == BikeState.Free:
+        return "available"
+    if state == BikeState.Rented:
+        return "unavailable"
+    raise ValueError(f"Unsupported BikeState for map sync: {state!r}")
 
 
 class BrokerUnavailableError(Exception):
@@ -23,7 +33,13 @@ class BrokerReplyRejectedError(Exception):
 
 
 class RabbitMQService:
-    QUEUES = ["bike.created", "bike.deleted", "rental.started", "rental.completed"]
+    QUEUES = [
+        "bike.created",
+        "bike.statusUpdated",
+        "bike.deleted",
+        "rental.started",
+        "rental.completed",
+    ]
 
     def __init__(self, app=None):
         self._app = None
@@ -127,6 +143,34 @@ class RabbitMQService:
             if connection and connection.is_open:
                 connection.close()
 
+    def _publish_fire_and_forget(self, queue_name: str, payload: dict) -> None:
+        """Publish to the default exchange; no RPC / no reply expected."""
+        if not self._enabled:
+            raise BrokerUnavailableError("Broker is disabled")
+
+        connection = None
+        try:
+            connection = self._connect()
+        except pika.exceptions.AMQPConnectionError as e:
+            raise BrokerUnavailableError(str(e)) from e
+
+        try:
+            channel = connection.channel()
+            channel.basic_publish(
+                exchange="",
+                routing_key=queue_name,
+                body=json.dumps(payload),
+                properties=pika.BasicProperties(
+                    content_type="application/json",
+                    delivery_mode=2,
+                ),
+            )
+        except pika.exceptions.AMQPConnectionError as e:
+            raise BrokerUnavailableError(str(e)) from e
+        finally:
+            if connection and connection.is_open:
+                connection.close()
+
     def publish_bike_created(self, bike_data):
         if not self._enabled:
             raise BrokerUnavailableError("Broker is disabled")
@@ -158,6 +202,20 @@ class RabbitMQService:
             "data": {},
         }
         self._rpc_call("bike.deleted", payload)
+
+    def publish_bike_status_updated(self, bike_id: str, bike_state: BikeState) -> None:
+        """US23: notify Map of availability change (one-way, no RPC)."""
+        if not self._enabled:
+            raise BrokerUnavailableError("Broker is disabled")
+
+        map_status = bike_state_to_map_location_status(bike_state)
+        payload = {
+            "event_type": "bike.statusUpdated",
+            "bikeId": str(bike_id),
+            "status": map_status,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        self._publish_fire_and_forget("bike.statusUpdated", payload)
 
     def _start_consumer_thread(self):
         self._stopped = False

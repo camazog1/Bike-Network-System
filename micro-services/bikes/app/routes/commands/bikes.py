@@ -80,6 +80,16 @@ def update_bike(id):
 
     service = _get_service()
     response = service.update_bike(id, data)
+
+    rabbitmq = current_app.rabbitmq
+    if rabbitmq is not None and data.state is not None:
+        from app.services.rabbitmq_service import BrokerUnavailableError
+
+        try:
+            rabbitmq.publish_bike_status_updated(response.id, response.state)
+        except BrokerUnavailableError:
+            abort(503, description="Broker unavailable.")
+
     return jsonify(response.model_dump(mode="json")), 200
 
 

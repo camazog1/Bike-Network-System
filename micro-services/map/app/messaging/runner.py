@@ -34,9 +34,11 @@ def register_consumers(app: Flask) -> None:
 
     try:
         from app.messaging.bike_created import handle_bike_created
+        from app.messaging.bike_status_updated import handle_bike_status_updated
         from app.messaging.consumer import consume_forever
 
         created_key = app.config["RABBITMQ_ROUTING_KEY_BIKE_CREATED"]
+        status_key = app.config["RABBITMQ_ROUTING_KEY_BIKE_STATUS_UPDATED"]
         deleted_key = app.config["RABBITMQ_ROUTING_KEY_BIKE_DELETED"]
         rental_key = app.config["RABBITMQ_ROUTING_KEY_RENTAL_COMPLETED"]
 
@@ -54,6 +56,17 @@ def register_consumers(app: Flask) -> None:
         )
         t1.start()
         logger.info("Started consumer thread for routing_key=%s", created_key)
+
+        def _run_bike_status_updated() -> None:
+            consume_forever(app, status_key, handle_bike_status_updated)
+
+        t_status = threading.Thread(
+            target=_run_bike_status_updated,
+            daemon=True,
+            name=f"amqp-{status_key}",
+        )
+        t_status.start()
+        logger.info("Started consumer thread for routing_key=%s", status_key)
 
         for key in (deleted_key, rental_key):
             t = threading.Thread(
