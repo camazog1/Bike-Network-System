@@ -52,12 +52,12 @@ def publish_rental_started(rental_dict: dict):
 
 def publish_rental_ended(rental_dict: dict):
     try:
-        _publish("rental.ended", {
+        _publish("rental.completed", {
             "rentalId": rental_dict["rentalId"],
             "bikeId":   rental_dict["bikeId"],
             "userId":   rental_dict["userId"],
             "endTime":  rental_dict["endTime"],
         })
     except Exception as e:
-        logger.error(f"Error publicando rental.ended: {e}")
+        logger.error(f"Error publicando rental.completed: {e}")
         raise
