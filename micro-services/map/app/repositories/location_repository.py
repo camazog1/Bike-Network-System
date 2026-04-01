@@ -9,3 +9,19 @@ class LocationRepository:
 
     def get_by_bike_id(self, bike_id: str) -> BikeLocation | None:
         return db.session.get(BikeLocation, bike_id)
+
+    def create_if_absent(self, bike_id: str, latitude: float, longitude: float) -> bool:
+        """Returns ``True`` if a new row was inserted, ``False`` if it already existed
+        (idempotent: no update).
+        """
+        if self.get_by_bike_id(bike_id) is not None:
+            return False
+        row = BikeLocation(
+            bike_id=bike_id,
+            latitude=latitude,
+            longitude=longitude,
+            status=LocationStatus.available,
+        )
+        db.session.add(row)
+        db.session.commit()
+        return True

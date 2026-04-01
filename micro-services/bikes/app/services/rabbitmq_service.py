@@ -135,6 +135,8 @@ class RabbitMQService:
         payload = {
             "event_type": "bike.created",
             "bike_id": bike_id,
+            "latitude": getattr(bike_data, "latitude", None),
+            "longitude": getattr(bike_data, "longitude", None),
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": {
                 "brand": bike_data.brand,

@@ -71,6 +71,8 @@ class TestPublishBikeCreatedSuccess:
         bike_data.colour = "Red"
         bike_data.state = MagicMock(value="Free")
         bike_data.bike_id = None
+        bike_data.latitude = 6.2442
+        bike_data.longitude = -75.5812
 
         # Should complete without raising
         rabbitmq_service.publish_bike_created(bike_data)
@@ -87,6 +89,8 @@ class TestPublishBikeCreatedSuccess:
         body = json.loads(call_kwargs.get("body"))
         assert body["event_type"] == "bike.created"
         assert "bike_id" in body
+        assert body["latitude"] == 6.2442
+        assert body["longitude"] == -75.5812
         assert "timestamp" in body
         assert body["data"]["brand"] == "Trek"
         assert body["data"]["type"] == "Mountain"
@@ -113,6 +117,8 @@ class TestPublishBikeCreatedFailures:
         bike_data.colour = "Red"
         bike_data.state = MagicMock(value="Free")
         bike_data.bike_id = None
+        bike_data.latitude = 6.2442
+        bike_data.longitude = -75.5812
 
         with pytest.raises(BrokerUnavailableError):
             rabbitmq_service.publish_bike_created(bike_data)
@@ -140,6 +146,8 @@ class TestPublishBikeCreatedFailures:
         bike_data.colour = "Red"
         bike_data.state = MagicMock(value="Free")
         bike_data.bike_id = None
+        bike_data.latitude = 6.2442
+        bike_data.longitude = -75.5812
 
         with pytest.raises(BrokerReplyTimeoutError):
             rabbitmq_service.publish_bike_created(bike_data)
@@ -182,6 +190,8 @@ class TestPublishBikeCreatedFailures:
         bike_data.colour = "Red"
         bike_data.state = MagicMock(value="Free")
         bike_data.bike_id = None
+        bike_data.latitude = 6.2442
+        bike_data.longitude = -75.5812
 
         with pytest.raises(BrokerReplyRejectedError):
             rabbitmq_service.publish_bike_created(bike_data)
@@ -222,6 +232,8 @@ class TestPublishBikeCreatedFailures:
         bike_data.colour = "Red"
         bike_data.state = MagicMock(value="Free")
         bike_data.bike_id = None
+        bike_data.latitude = 6.2442
+        bike_data.longitude = -75.5812
 
         # Wrong correlation_id means response[0] stays None -> timeout
         with pytest.raises(BrokerReplyTimeoutError):

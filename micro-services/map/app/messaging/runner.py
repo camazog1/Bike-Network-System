@@ -1,15 +1,28 @@
-"""Background RabbitMQ consumers. Handlers to be implemented in later tasks."""
+"""Background RabbitMQ consumers."""
 
 import logging
 import threading
+from typing import Any
 
+import pika
 from flask import Flask
+
+from app.messaging.rpc import send_rpc_reply
 
 logger = logging.getLogger(__name__)
 
 
-def _stub_handler(payload: dict) -> None:
-    logger.debug("Stub consumer received: %s", payload)
+def _stub_rpc_ok(
+    _app: Flask,
+    _payload: dict,
+    channel: pika.channel.Channel,
+    method: Any,
+    properties: pika.spec.BasicProperties,
+) -> None:
+    """Other queues still use Bike CRUD RPC — reply ok so the publisher does not timeout."""
+    if properties.reply_to:
+        send_rpc_reply(channel, properties, {"status": "ok"})
+    channel.basic_ack(delivery_tag=method.delivery_tag)
 
 
 def register_consumers(app: Flask) -> None:
@@ -19,19 +32,33 @@ def register_consumers(app: Flask) -> None:
         logger.info("RabbitMQ consumers off (set ENABLE_RABBIT_CONSUMERS=1 when broker is up).")
         return
 
-    # TODO: replace stubs with bike.created / bike.deleted / rental.completed handlers
     try:
+        from app.messaging.bike_created import handle_bike_created
         from app.messaging.consumer import consume_forever
 
-        keys = [
-            app.config["RABBITMQ_ROUTING_KEY_BIKE_CREATED"],
-            app.config["RABBITMQ_ROUTING_KEY_BIKE_DELETED"],
-            app.config["RABBITMQ_ROUTING_KEY_RENTAL_COMPLETED"],
-        ]
-        for key in keys:
+        created_key = app.config["RABBITMQ_ROUTING_KEY_BIKE_CREATED"]
+        deleted_key = app.config["RABBITMQ_ROUTING_KEY_BIKE_DELETED"]
+        rental_key = app.config["RABBITMQ_ROUTING_KEY_RENTAL_COMPLETED"]
+
+        def _run_bike_created() -> None:
+            consume_forever(
+                app,
+                created_key,
+                handle_bike_created,
+            )
+
+        t1 = threading.Thread(
+            target=_run_bike_created,
+            daemon=True,
+            name=f"amqp-{created_key}",
+        )
+        t1.start()
+        logger.info("Started consumer thread for routing_key=%s", created_key)
+
+        for key in (deleted_key, rental_key):
             t = threading.Thread(
                 target=consume_forever,
-                args=(app, key, _stub_handler),
+                args=(app, key, _stub_rpc_ok),
                 daemon=True,
                 name=f"amqp-{key}",
             )

@@ -96,29 +96,94 @@ Tabla **`locations`** (MySQL, esquema `geo_db` en despliegue objetivo):
 
 ---
 
-## Contratos de mensajería (RabbitMQ)
+## Contrato congelado — `bike.created` (US22), versión 1
 
-El servicio está pensado para **consumir** colas enlazadas a un exchange directo configurable (por defecto `bike_network.events`). Las **routing keys** y el cuerpo deben acordarse con Bike CRUD y Rental; los valores objetivo alineados con las HU y el diagrama de despliegue son:
+**Fuente de verdad** para Bike CRUD, Map y quien integre el broker. Cualquier cambio incrementa la **versión** del contrato y debe coordinarse entre equipos.
 
-### `bike.created` (US22)
+### Patrón de integración: RPC sobre RabbitMQ
 
-Publicado por Bike CRUD al registrar una bici. El map debe **crear** un registro en `locations` si no existe.
+Bike CRUD publica el mensaje en la cola `bike.created` usando el patrón **request–reply** de RabbitMQ:
 
-**Payload esperado (mínimo)**
+| Elemento | Descripción |
+|----------|-------------|
+| Cuerpo del mensaje | JSON con el payload de negocio (ver abajo). |
+| `reply_to` | Nombre de la cola **exclusiva y temporal** donde el publicador (Bike CRUD) espera la respuesta. |
+| `correlation_id` | Identificador que el consumidor (Map) debe **repetir** en la respuesta para que el publicador correlacione. |
+
+El **Location Microservice (Map)** debe:
+
+1. Consumir el mensaje de la cola acordada (`bike.created`).
+2. Procesar el JSON (validar, persistir en `locations` según reglas de US22).
+3. Publicar la **respuesta RPC** en el exchange por defecto (`""`) con `routing_key = reply_to`, usando el mismo `correlation_id` en las propiedades del mensaje de respuesta.
+4. El cuerpo de la respuesta es siempre JSON (éxito o error).
+
+### Payload entrante (JSON — cuerpo del mensaje `bike.created`)
+
+Campos **obligatorios**; nombres **exactos** (snake_case, alineado con el publicador en Bike CRUD):
+
+| Campo | Tipo JSON | Obligatorio | Descripción |
+|-------|-----------|-------------|-------------|
+| `bike_id` | string | Sí | Identificador de la bici ya persistido en Bike CRUD. |
+| `latitude` | number | Sí | Latitud WGS84, grados decimales. |
+| `longitude` | number | Sí | Longitud WGS84, grados decimales. |
+
+**Ejemplo mínimo válido**
+
+```json
+{
+  "bike_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "latitude": 6.2442,
+  "longitude": -75.5812
+}
+```
+
+Campos adicionales pueden existir en el futuro; el Map **debe** leer al menos los tres anteriores. La versión del esquema de mensaje se puede extender más adelante (p. ej. `schemaVersion`) sin romper este mínimo.
+
+### Respuesta RPC — éxito
+
+Cuando el Map **acepta** el procesamiento (incluido el caso **idempotente**: `bike_id` ya existía y no se modifica la fila):
+
+```json
+{
+  "status": "ok"
+}
+```
+
+**Importante:** el valor de `status` en éxito debe ser la cadena **`ok`** en **minúsculas**. El microservicio Bike CRUD valida `reply.get("status", "").lower() == "ok"`; si no coincide, trata la respuesta como **rechazada**.
+
+### Respuesta RPC — error (validación, persistencia, reglas de negocio)
+
+Cuando el Map **no** puede completar el procesamiento de forma satisfactoria (p. ej. faltan `latitude`/`longitude`, JSON inválido, error de base de datos al insertar):
+
+```json
+{
+  "status": "error",
+  "message": "Descripción breve del motivo"
+}
+```
 
 | Campo | Tipo | Obligatorio | Descripción |
 |-------|------|-------------|-------------|
-| `bikeId` | string | Sí | Identificador de la bici. |
-| `latitude` | number | Sí | Latitud válida. |
-| `longitude` | number | Sí | Longitud válida. |
+| `status` | string | Sí | Debe ser **`error`** (minúsculas) para distinguir de éxito. |
+| `message` | string | Recomendado | Texto para logs y depuración; no sustituye logs del servidor. |
 
-**Comportamiento esperado**
+**Efecto en Bike CRUD:** el código actual interpreta cualquier respuesta cuyo `status` (en minúsculas) **no** sea `ok` como **rechazo** (`BrokerReplyRejectedError`), lo que en el flujo de creación de bici puede traducirse en **fallo del `POST`** (p. ej. HTTP 502 según rutas). Es decir: **sí**, si el Map responde `status: error`, el alta en Bike CRUD **no** se considera exitosa desde el punto de vista del RPC.
 
-- Si faltan coordenadas o el mensaje es inválido: **log de error**, **no** crear fila, **no** detener el proceso del consumidor.
-- Si ya existe `bikeId`: **no** duplicar ni modificar (idempotencia silenciosa).
-- Si el mensaje es válido: insertar fila con `status = available`.
+### Reglas de negocio US22 (recordatorio)
 
-*(Nota: el formato exacto del JSON puede incluir metadatos adicionales; el consumidor debe extraer `bikeId`, `latitude`, `longitude` de forma consistente con Bike CRUD.)*
+- Faltan coordenadas o payload inválido: **no** crear fila en `locations`, **log** de error, respuesta RPC **`status: error`** (y proceso del consumidor **no** debe caerse).
+- `bike_id` ya existente en `locations`: **no** duplicar ni modificar; respuesta RPC **`status: ok`** (idempotencia).
+- Mensaje válido y fila nueva: insertar con `status = available`; respuesta **`status: ok`**.
+
+---
+
+## Contratos de mensajería (RabbitMQ) — otros eventos
+
+El servicio puede consumir otras colas enlazadas a un exchange directo configurable (por defecto `bike_network.events`). Las **routing keys** y cuerpos deben alinearse con Bike CRUD y Rental.
+
+### `bike.created` (US22) — referencia rápida
+
+Resumen: ver sección **Contrato congelado — `bike.created` (US22)** arriba.
 
 ---
 
