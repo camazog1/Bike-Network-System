@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
@@ -15,8 +16,12 @@ def create_app(config=None):
     else:
         app.config.from_object(config)
 
+    CORS(app)
     db.init_app(app)
     migrate.init_app(app, db)
+
+    from app.firebase import initialize_firebase
+    initialize_firebase(app)
 
     # Import models so Alembic can detect them
     from app.models import bike  # noqa: F401
