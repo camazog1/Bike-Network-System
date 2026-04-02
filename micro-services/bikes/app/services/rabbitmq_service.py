@@ -39,6 +39,7 @@ class RabbitMQService:
         "bike.deleted",
         "rental.started",
         "rental.completed",
+        "rental.isAvailable",
     ]
 
     def __init__(self, app=None):
@@ -265,6 +266,11 @@ class RabbitMQService:
             on_message_callback=self._on_rental_completed,
             auto_ack=False,
         )
+        channel.basic_consume(
+            queue="rental.isAvailable",
+            on_message_callback=self._on_is_available,
+            auto_ack=False,
+        )
         channel.start_consuming()
 
     def _on_rental_started(self, ch, method, properties, body):
@@ -356,6 +362,121 @@ class RabbitMQService:
                 type(e).__name__,
                 e,
             )
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+    def _on_is_available(self, ch, method, properties, body):
+        import time
+        import uuid as _uuid
+
+        from app.repositories.bike_repository import BikeRepository
+
+        start = time.monotonic()
+        bike_id = None
+        correlation_id = getattr(properties, "correlation_id", None)
+        reply_to = getattr(properties, "reply_to", None)
+
+        def _publish_reply(payload):
+            ch.basic_publish(
+                exchange="",
+                routing_key=reply_to,
+                body=json.dumps(payload),
+                properties=pika.BasicProperties(correlation_id=correlation_id),
+            )
+
+        # Guard: no reply_to — cannot reply, discard silently
+        if not reply_to:
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            logger.info(
+                "[RABBITMQ] INFO model=async queue=rental.isAvailable bike_id=None "
+                "correlation_id=%s available=None elapsed_ms=%.1f",
+                correlation_id,
+                (time.monotonic() - start) * 1000,
+            )
+            return
+
+        try:
+            try:
+                data = json.loads(body)
+            except (json.JSONDecodeError, TypeError):
+                _publish_reply({"available": False, "reason": "error", "message": "Malformed JSON body"})
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                logger.info(
+                    "[RABBITMQ] INFO model=async queue=rental.isAvailable bike_id=None "
+                    "correlation_id=%s available=False elapsed_ms=%.1f",
+                    correlation_id,
+                    (time.monotonic() - start) * 1000,
+                )
+                return
+
+            bike_id = data.get("bike_id")
+            if not bike_id:
+                _publish_reply({"available": False, "reason": "error", "message": "Missing bike_id field"})
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                logger.info(
+                    "[RABBITMQ] INFO model=async queue=rental.isAvailable bike_id=None "
+                    "correlation_id=%s available=False elapsed_ms=%.1f",
+                    correlation_id,
+                    (time.monotonic() - start) * 1000,
+                )
+                return
+
+            try:
+                _uuid.UUID(bike_id, version=4)
+            except (ValueError, AttributeError):
+                _publish_reply({"available": False, "reason": "error", "message": "Invalid bike_id format"})
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                logger.info(
+                    "[RABBITMQ] INFO model=async queue=rental.isAvailable bike_id=%s "
+                    "correlation_id=%s available=False elapsed_ms=%.1f",
+                    bike_id,
+                    correlation_id,
+                    (time.monotonic() - start) * 1000,
+                )
+                return
+
+            with self._app.app_context():
+                bike = BikeRepository().get_by_id(bike_id)
+
+            if bike is None:
+                _publish_reply({"available": False, "reason": "not_found"})
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                logger.info(
+                    "[RABBITMQ] INFO model=async queue=rental.isAvailable bike_id=%s "
+                    "correlation_id=%s available=False elapsed_ms=%.1f",
+                    bike_id,
+                    correlation_id,
+                    (time.monotonic() - start) * 1000,
+                )
+                return
+
+            available = bike.state == BikeState.Free
+            _publish_reply({"available": available})
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            logger.info(
+                "[RABBITMQ] INFO model=async queue=rental.isAvailable bike_id=%s "
+                "correlation_id=%s available=%s elapsed_ms=%.1f",
+                bike_id,
+                correlation_id,
+                available,
+                (time.monotonic() - start) * 1000,
+            )
+
+        except Exception as e:
+            elapsed_ms = (time.monotonic() - start) * 1000
+            logger.error(
+                "[RABBITMQ] ERROR model=async queue=rental.isAvailable bike_id=%s "
+                "correlation_id=%s error=%s: %s elapsed_ms=%.1f",
+                bike_id,
+                correlation_id,
+                type(e).__name__,
+                e,
+                elapsed_ms,
+            )
+            if reply_to:
+                try:
+                    _publish_reply({"available": False, "reason": "error", "message": str(e)})
+                except Exception:
+                    pass
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     def shutdown(self):
