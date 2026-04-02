@@ -30,7 +30,13 @@ class TestCreateBike:
         self.service = BikeService(self.repo)
 
     def test_create_bike_success(self):
-        data = BikeCreate(brand="Trek", type=BikeType.Mountain, colour="Red")
+        data = BikeCreate(
+            brand="Trek",
+            type=BikeType.Mountain,
+            colour="Red",
+            latitude=6.2442,
+            longitude=-75.5812,
+        )
         self.repo.create.return_value = _fake_bike()
 
         result = self.service.create_bike(data)
@@ -43,7 +49,13 @@ class TestCreateBike:
 
     def test_create_bike_invalid_enum_raises_validation(self):
         with pytest.raises(ValidationError):
-            BikeCreate(brand="Trek", type="BMX", colour="Red")
+            BikeCreate(
+                brand="Trek",
+                type="BMX",
+                colour="Red",
+                latitude=6.2442,
+                longitude=-75.5812,
+            )
 
 
 class TestGetBike:

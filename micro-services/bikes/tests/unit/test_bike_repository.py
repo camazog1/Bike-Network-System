@@ -20,7 +20,13 @@ def repo():
 
 class TestCreate:
     def test_create_adds_and_commits(self, repo, mock_db):
-        data = BikeCreate(brand="Trek", type=BikeType.Mountain, colour="Red")
+        data = BikeCreate(
+            brand="Trek",
+            type=BikeType.Mountain,
+            colour="Red",
+            latitude=6.2442,
+            longitude=-75.5812,
+        )
         result = repo.create(data)
 
         mock_db.session.add.assert_called_once()

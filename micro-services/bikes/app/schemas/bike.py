@@ -10,6 +10,8 @@ class BikeCreate(BaseModel):
     type: BikeType
     colour: str = Field(..., min_length=1, max_length=50)
     state: BikeState = BikeState.Free
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
 
 
 class BikeUpdate(BaseModel):
