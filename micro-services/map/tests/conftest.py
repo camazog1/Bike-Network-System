@@ -1,6 +1,7 @@
 import pytest
 
 from app import create_app, db as _db
+from app import auth as auth_module
 from app.config import TestingConfig
 from app.models.location import BikeLocation, LocationStatus
 from tests.mock_bike_locations import MOCK_BIKE_LOCATIONS
@@ -25,7 +26,25 @@ def db_session(app):
 
 @pytest.fixture()
 def client(app):
-    return app.test_client()
+    test_client = app.test_client()
+    # Map endpoints are protected by @require_authentication
+    test_client.environ_base["HTTP_AUTHORIZATION"] = "Bearer admin-token"
+    return test_client
+
+
+@pytest.fixture(autouse=True)
+def mock_verify_token(monkeypatch):
+
+    def fake_verify_token(token: str) -> dict:
+        # The application only needs claims to exist.
+        return {
+            "uid": "test-user",
+            "email": "test@example.com",
+            "role": "user",
+            "admin": False,
+        }
+
+    monkeypatch.setattr(auth_module, "verify_token", fake_verify_token)
 
 
 @pytest.fixture()

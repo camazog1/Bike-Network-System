@@ -33,3 +33,11 @@ class LocationRepository:
         row.status = status
         db.session.commit()
         return True
+
+    def delete_by_bike_id(self, bike_id: str) -> bool:
+        row = self.get_by_bike_id(bike_id)
+        if row is None:
+            return False
+        db.session.delete(row)
+        db.session.commit()
+        return True
