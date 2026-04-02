@@ -43,10 +43,10 @@ export default function BikeList({
       <table className="w-full border-collapse text-left text-sm">
         <thead>
           <tr className="border-b-2 border-border">
-            <th className="px-3 py-2 text-text-muted font-medium">Name</th>
             <th className="px-3 py-2 text-text-muted font-medium">Brand</th>
             <th className="px-3 py-2 text-text-muted font-medium">Type</th>
-            <th className="px-3 py-2 text-text-muted font-medium">Status</th>
+            <th className="px-3 py-2 text-text-muted font-medium">Colour</th>
+            <th className="px-3 py-2 text-text-muted font-medium">State</th>
             <th className="px-3 py-2 text-text-muted font-medium">Actions</th>
           </tr>
         </thead>
@@ -56,10 +56,10 @@ export default function BikeList({
               key={bike.id}
               className="border-b border-border hover:bg-surface-muted"
             >
-              <td className="px-3 py-2 text-text">{bike.name}</td>
               <td className="px-3 py-2 text-text">{bike.brand}</td>
               <td className="px-3 py-2 text-text">{bike.type}</td>
-              <td className="px-3 py-2 text-text">{bike.status ?? "—"}</td>
+              <td className="px-3 py-2 text-text">{bike.colour}</td>
+              <td className="px-3 py-2 text-text">{bike.state ?? "—"}</td>
               <td className="px-3 py-2 flex gap-3">
                 <Link
                   to={`/bikes/${bike.id}/edit`}
@@ -82,7 +82,7 @@ export default function BikeList({
       {deletingBike && (
         <BikeDeleteDialog
           bikeId={deletingBike.id}
-          bikeName={deletingBike.name}
+          bikeName={`${deletingBike.brand} (${deletingBike.type})`}
           isOpen={true}
           onClose={() => setDeletingBike(null)}
         />
