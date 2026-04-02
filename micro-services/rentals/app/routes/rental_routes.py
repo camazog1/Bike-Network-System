@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.auth.decorators import require_authentication
 from app.services.rental_service import (
     create_rental,
@@ -15,23 +15,23 @@ rental_bp = Blueprint("rental", __name__)
 @rental_bp.route("/api/v1/rental", methods=["POST"])
 @require_authentication
 def create_rental_route():
-
     data = request.get_json(silent=True)
 
     if not data:
         return jsonify({"error": "El body debe ser JSON válido."}), 400
 
-    user_id = data.get("userId")
     bike_id = data.get("bikeId")
 
-    if not user_id or not bike_id:
-        return jsonify({"error": "userId y bikeId son requeridos."}), 400
+    if not bike_id:
+        return jsonify({"error": "bikeId es requerido."}), 400
 
-    if not isinstance(user_id, str) or not isinstance(bike_id, str):
-        return jsonify({"error": "userId y bikeId deben ser strings."}), 400
+    if not isinstance(bike_id, str):
+        return jsonify({"error": "bikeId debe ser un string."}), 400
 
-    if not user_id.strip() or not bike_id.strip():
-        return jsonify({"error": "userId y bikeId no pueden estar vacíos."}), 400
+    if not bike_id.strip():
+        return jsonify({"error": "bikeId no puede estar vacío."}), 400
+
+    user_id = g.current_user["uid"]
 
     try:
         rental = create_rental(user_id=user_id, bike_id=bike_id)
