@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: service-rentals
-          image: mvasquezb99/service-rentals:v1
+          image: mvasquezb99/service-rentals:v3
           ports:
             - containerPort: 5000
           envFrom:

@@ -44,7 +44,6 @@ def create_app(config=None):
         rabbitmq = RabbitMQService()
         rabbitmq.init_app(app)
         app.rabbitmq = rabbitmq
-        rabbitmq._start_consumer_thread()
     else:
         app.rabbitmq = None
 

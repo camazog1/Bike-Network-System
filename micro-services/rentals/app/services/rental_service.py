@@ -15,7 +15,7 @@ def create_rental(user_id: str, bike_id: str) -> dict:
         raise BikeNotFoundException(f"Bici {bike_id} no encontrada.")
 
     # 2. Verificar que la bici está disponible
-    if bike.get("state", "").lower() != "free":
+    if not bike.get("available", False):
         raise BikeUnavailableException(f"Bici {bike_id} no está disponible.")
 
     # 3. Crear el registro de renta en MySQL

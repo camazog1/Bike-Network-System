@@ -622,6 +622,148 @@ class TestOnRentalCompleted:
             ch.basic_nack.assert_called_once_with(delivery_tag=4, requeue=False)
 
 
+class TestOnIsAvailableHappyPath:
+    """T005: Unit tests for _on_rental.isAvailable happy path."""
+
+    BIKE_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+    def _make(self, delivery_tag=1, bike_id=None):
+        bike_id = bike_id or self.BIKE_ID
+        ch = MagicMock()
+        method = MagicMock()
+        method.delivery_tag = delivery_tag
+        properties = MagicMock()
+        properties.reply_to = "amq.gen-reply-test"
+        properties.correlation_id = "corr-test-1"
+        body = json.dumps({"bike_id": bike_id}).encode()
+        return ch, method, properties, body
+
+    @patch("app.repositories.bike_repository.BikeRepository")
+    def test_bike_free_replies_available_true(self, mock_repo_cls, rabbitmq_service):
+        """bike exists, state == Free → reply {"available": true}, basic_ack called."""
+        ch, method, properties, body = self._make()
+        mock_bike = MagicMock()
+        mock_bike.state = BikeState.Free
+        mock_repo_cls.return_value.get_by_id.return_value = mock_bike
+
+        rabbitmq_service._on_is_available(ch, method, properties, body)
+
+        ch.basic_ack.assert_called_once_with(delivery_tag=1)
+        ch.basic_publish.assert_called_once()
+        reply = json.loads(ch.basic_publish.call_args.kwargs["body"])
+        assert reply["available"] is True
+
+    @patch("app.repositories.bike_repository.BikeRepository")
+    def test_bike_rented_replies_available_false(self, mock_repo_cls, rabbitmq_service):
+        """bike exists, state == Rented → reply {"available": false}, basic_ack called."""
+        ch, method, properties, body = self._make()
+        mock_bike = MagicMock()
+        mock_bike.state = BikeState.Rented
+        mock_repo_cls.return_value.get_by_id.return_value = mock_bike
+
+        rabbitmq_service._on_is_available(ch, method, properties, body)
+
+        ch.basic_ack.assert_called_once_with(delivery_tag=1)
+        ch.basic_publish.assert_called_once()
+        reply = json.loads(ch.basic_publish.call_args.kwargs["body"])
+        assert reply["available"] is False
+
+
+class TestOnIsAvailableErrorPaths:
+    """T007: Unit tests for _on_is_available error paths."""
+
+    BIKE_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+    def _make(self, delivery_tag=1, bike_id=None, reply_to="amq.gen-reply-test"):
+        bike_id = bike_id or self.BIKE_ID
+        ch = MagicMock()
+        method = MagicMock()
+        method.delivery_tag = delivery_tag
+        properties = MagicMock()
+        properties.reply_to = reply_to
+        properties.correlation_id = "corr-err-1"
+        body = json.dumps({"bike_id": bike_id}).encode()
+        return ch, method, properties, body
+
+    def test_no_reply_to_nacks_without_reply(self, rabbitmq_service):
+        """properties.reply_to = None → basic_nack called, basic_publish NOT called."""
+        ch, method, properties, body = self._make(reply_to=None)
+        properties.reply_to = None
+
+        rabbitmq_service._on_is_available(ch, method, properties, body)
+
+        ch.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
+        ch.basic_publish.assert_not_called()
+
+    def test_malformed_json_nacks_and_replies_error(self, rabbitmq_service):
+        """body is b'not-json' → basic_nack called, basic_publish called with reason='error'."""
+        ch = MagicMock()
+        method = MagicMock()
+        method.delivery_tag = 1
+        properties = MagicMock()
+        properties.reply_to = "amq.gen-reply-test"
+        properties.correlation_id = "corr-err-1"
+
+        rabbitmq_service._on_is_available(ch, method, properties, b"not-json")
+
+        ch.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
+        ch.basic_publish.assert_called_once()
+        reply = json.loads(ch.basic_publish.call_args.kwargs["body"])
+        assert reply["reason"] == "error"
+
+    def test_missing_bike_id_nacks_and_replies_error(self, rabbitmq_service):
+        """body has no bike_id → basic_nack called, error reply sent."""
+        ch = MagicMock()
+        method = MagicMock()
+        method.delivery_tag = 1
+        properties = MagicMock()
+        properties.reply_to = "amq.gen-reply-test"
+        properties.correlation_id = "corr-err-1"
+
+        rabbitmq_service._on_is_available(ch, method, properties, json.dumps({}).encode())
+
+        ch.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
+        ch.basic_publish.assert_called_once()
+        reply = json.loads(ch.basic_publish.call_args.kwargs["body"])
+        assert reply["reason"] == "error"
+
+    def test_invalid_uuid_nacks_and_replies_error(self, rabbitmq_service):
+        """bike_id='not-a-uuid' → basic_nack called, error reply sent."""
+        ch, method, properties, _ = self._make(bike_id="not-a-uuid")
+        body = json.dumps({"bike_id": "not-a-uuid"}).encode()
+
+        rabbitmq_service._on_is_available(ch, method, properties, body)
+
+        ch.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
+        ch.basic_publish.assert_called_once()
+        reply = json.loads(ch.basic_publish.call_args.kwargs["body"])
+        assert reply["reason"] == "error"
+
+    @patch("app.repositories.bike_repository.BikeRepository")
+    def test_bike_not_found_replies_not_found_and_acks(self, mock_repo_cls, rabbitmq_service):
+        """BikeRepository.get_by_id returns None → reply {"available": false, "reason": "not_found"}, basic_ack called."""
+        ch, method, properties, body = self._make()
+        mock_repo_cls.return_value.get_by_id.return_value = None
+
+        rabbitmq_service._on_is_available(ch, method, properties, body)
+
+        ch.basic_ack.assert_called_once_with(delivery_tag=1)
+        ch.basic_publish.assert_called_once()
+        reply = json.loads(ch.basic_publish.call_args.kwargs["body"])
+        assert reply["available"] is False
+        assert reply["reason"] == "not_found"
+
+    @patch("app.repositories.bike_repository.BikeRepository")
+    def test_db_exception_nacks(self, mock_repo_cls, rabbitmq_service):
+        """BikeRepository.get_by_id raises Exception → basic_nack called."""
+        ch, method, properties, body = self._make()
+        mock_repo_cls.return_value.get_by_id.side_effect = Exception("DB connection lost")
+
+        rabbitmq_service._on_is_available(ch, method, properties, body)
+
+        ch.basic_nack.assert_called_once_with(delivery_tag=1, requeue=False)
+
+
 class TestDisabledMode:
     """T024: RABBITMQ_ENABLED=false guard verification."""
 

@@ -160,3 +160,82 @@ class TestAsyncConsumerRentalStarted:
         rabbitmq.shutdown()
         app.config["RABBITMQ_ENABLED"] = False
         app.rabbitmq = None
+
+
+@pytest.mark.integration_broker
+@broker_available
+class TestIsAvailableRpc:
+    """T009: End-to-end RPC round-trip for rental.isAvailable."""
+
+    def test_is_available_rpc_round_trip(self, app):
+        """Seed a Free bike, publish rental.isAvailable RPC, verify reply arrives with available=true."""
+        from app import db
+        from app.models.bike import Bike, BikeType
+
+        seeded_id = "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa"
+
+        with app.app_context():
+            bike = Bike(
+                id=seeded_id,
+                brand="Trek",
+                type=BikeType.Mountain,
+                colour="Red",
+                state=BikeState.Free,
+            )
+            db.session.add(bike)
+            db.session.commit()
+
+        # Enable RabbitMQ and start consumer thread
+        app.config["RABBITMQ_ENABLED"] = True
+        from app.services.rabbitmq_service import RabbitMQService
+
+        rabbitmq = RabbitMQService()
+        rabbitmq.init_app(app)
+        app.rabbitmq = rabbitmq
+        rabbitmq._start_consumer_thread()
+
+        # Give consumer thread time to connect and start consuming
+        time.sleep(2)
+
+        # Publish rental.isAvailable RPC
+        connection = pika.BlockingConnection(
+            pika.URLParameters("amqp://guest:guest@localhost:5672/")
+        )
+        channel = connection.channel()
+
+        result = channel.queue_declare(queue="", exclusive=True, auto_delete=True)
+        callback_queue = result.method.queue
+
+        reply_received = [None]
+
+        def on_reply(ch, method, props, body):
+            reply_received[0] = (props.correlation_id, json.loads(body))
+
+        channel.basic_consume(
+            queue=callback_queue,
+            on_message_callback=on_reply,
+            auto_ack=True,
+        )
+
+        channel.basic_publish(
+            exchange="",
+            routing_key="rental.isAvailable",
+            body=json.dumps({"bike_id": seeded_id}),
+            properties=pika.BasicProperties(
+                reply_to=callback_queue,
+                correlation_id="test-corr-1",
+            ),
+        )
+
+        connection.process_data_events(time_limit=10)
+        connection.close()
+
+        assert reply_received[0] is not None, "No reply received within 10s"
+        corr_id, body = reply_received[0]
+        assert corr_id == "test-corr-1"
+        assert body["available"] is True
+
+        # Cleanup
+        rabbitmq.shutdown()
+        app.config["RABBITMQ_ENABLED"] = False
+        app.rabbitmq = None
