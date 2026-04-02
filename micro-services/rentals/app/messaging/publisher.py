@@ -170,5 +170,5 @@ def _rpc_call(queue: str, payload: dict) -> dict:
 
 def check_bike_available(bike_id: str) -> bool:
 
-    reply = _rpc_call("Rental.isAvailable", {"bike_id": bike_id})
+    reply = _rpc_call("rental.isAvailable", {"bike_id": bike_id})
     return reply.get("available", False)
