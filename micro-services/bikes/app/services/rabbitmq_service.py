@@ -349,6 +349,8 @@ class RabbitMQService:
                 if bike_response.state == target_state:
                     logger.info(f"[RABBITMQ] INFO model=async queue={method.routing_key} bikeId={bike_id} bike_response={bike_response} target_state={target_state}")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
+                    self.publish_bike_status_updated(bike_id, target_state)
+                    
                     return
 
                 from app.schemas.bike import BikeUpdate
