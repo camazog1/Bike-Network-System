@@ -71,6 +71,9 @@ class RabbitMQService:
             logger.info("[RABBITMQ] Connected and declared queues")
         except pika.exceptions.AMQPConnectionError as e:
             logger.error("[RABBITMQ] ERROR model=startup queue=None bike_id=None correlation_id=None error=AMQPConnectionError: %s", e)
+            return
+
+        self._start_consumer_thread()
 
     def _connect(self):
         params = pika.URLParameters(self._url)
@@ -275,12 +278,14 @@ class RabbitMQService:
 
     def _on_rental_started(self, ch, method, properties, body):
         from app.models.bike import BikeState
-
+        logger.info(f"[RABBITMQ] INFO Consuming rental.started event model=async queue={method.routing_key} body={body}")
+        
         self._handle_rental_event(ch, method, body, target_state=BikeState.Rented)
 
     def _on_rental_completed(self, ch, method, properties, body):
         from app.models.bike import BikeState
-
+        logger.info(f"[RABBITMQ] INFO Consuming rental.completed event model=async queue={method.routing_key} body={body}")
+        
         self._handle_rental_event(ch, method, body, target_state=BikeState.Free)
 
     def _handle_rental_event(self, ch, method, body, target_state):
@@ -300,7 +305,10 @@ class RabbitMQService:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             return
 
-        bike_id = data.get("bike_id")
+        bike_id = data.get("bikeId")
+
+        logger.info(f"[RABBITMQ] INFO model=async queue={method.routing_key} bikeId={bike_id}")
+        
         if not bike_id:
             logger.error(
                 "[RABBITMQ] ERROR model=async queue=%s bike_id=None "
@@ -327,6 +335,7 @@ class RabbitMQService:
                 service = BikeService(BikeRepository())
                 try:
                     bike_response = service.get_bike(bike_id)
+                    logger.info(f"[RABBITMQ] INFO model=async queue={method.routing_key} bikeId={bike_id} bike_response={bike_response}")
                 except Exception:
                     logger.warning(
                         "[RABBITMQ] WARNING model=async queue=%s bike_id=%s "
@@ -338,6 +347,7 @@ class RabbitMQService:
                     return
 
                 if bike_response.state == target_state:
+                    logger.info(f"[RABBITMQ] INFO model=async queue={method.routing_key} bikeId={bike_id} bike_response={bike_response} target_state={target_state}")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
                     return
 
@@ -345,6 +355,7 @@ class RabbitMQService:
 
                 update_data = BikeUpdate(state=target_state)
                 service.update_bike(bike_id, update_data)
+                logger.info(f"[RABBITMQ] INFO model=async queue={method.routing_key} bikeId={bike_id} update_data={update_data}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 logger.info(
                     "[RABBITMQ] INFO model=async queue=%s bike_id=%s "
