@@ -1,6 +1,7 @@
 import time
 
 from flask import Flask
+from flask_cors import CORS
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
@@ -82,6 +83,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.config.from_object(config_by_name[selected_config])
 
     initialize_firebase(app)
+    CORS(app)
     db.init_app(app)
     register_blueprints(app)
     register_error_handlers(app)
