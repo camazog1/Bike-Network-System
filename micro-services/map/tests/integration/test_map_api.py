@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 from app import db
 from app.messaging.bike_status_updated import handle_bike_status_updated
+from app.messaging.bike_deleted import handle_bike_deleted
 from app.models.location import BikeLocation, LocationStatus
 
 
@@ -76,3 +77,30 @@ class TestAvailableLocationsAPI:
         assert response.status_code == 200
         ids = {item["bikeId"] for item in response.get_json()}
         assert "US23-int" not in ids
+
+    def test_bike_deleted_handler_removes_bike_from_available_list(self, client):
+        """US delete propagation: bike.deleted -> handler deletes from locations."""
+        with client.application.app_context():
+            db.session.add(
+                BikeLocation(
+                    bike_id="US22-del-int",
+                    latitude=6.0,
+                    longitude=-75.0,
+                    status=LocationStatus.available,
+                )
+            )
+            db.session.commit()
+
+        channel = MagicMock()
+        method = MagicMock()
+        method.delivery_tag = 123
+        props = MagicMock()
+        props.reply_to = None
+        props.correlation_id = None
+        payload = {"bike_id": "US22-del-int"}
+
+        handle_bike_deleted(client.application, payload, channel, method, props)
+
+        response = client.get("/api/v1/locations/available")
+        ids = {item["bikeId"] for item in response.get_json()}
+        assert "US22-del-int" not in ids

@@ -34,6 +34,7 @@ def register_consumers(app: Flask) -> None:
 
     try:
         from app.messaging.bike_created import handle_bike_created
+        from app.messaging.bike_deleted import handle_bike_deleted
         from app.messaging.bike_status_updated import handle_bike_status_updated
         from app.messaging.consumer import consume_forever
 
@@ -68,14 +69,21 @@ def register_consumers(app: Flask) -> None:
         t_status.start()
         logger.info("Started consumer thread for routing_key=%s", status_key)
 
-        for key in (deleted_key, rental_key):
-            t = threading.Thread(
-                target=consume_forever,
-                args=(app, key, _stub_rpc_ok),
-                daemon=True,
-                name=f"amqp-{key}",
-            )
-            t.start()
-            logger.info("Started consumer thread for routing_key=%s", key)
+        t_deleted = threading.Thread(
+            target=lambda: consume_forever(app, deleted_key, handle_bike_deleted),
+            daemon=True,
+            name=f"amqp-{deleted_key}",
+        )
+        t_deleted.start()
+        logger.info("Started consumer thread for routing_key=%s", deleted_key)
+
+        t_rental = threading.Thread(
+            target=consume_forever,
+            args=(app, rental_key, _stub_rpc_ok),
+            daemon=True,
+            name=f"amqp-{rental_key}",
+        )
+        t_rental.start()
+        logger.info("Started consumer thread for routing_key=%s", rental_key)
     except Exception:
         logger.exception("Could not start RabbitMQ consumers (broker up?)")
