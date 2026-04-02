@@ -5,6 +5,7 @@ import Register from './features/Auth/components/Register';
 import Bikes from './features/Bikes';
 import BikeCreate from './features/Bikes/components/BikeCreate';
 import BikeEdit from './features/Bikes/components/BikeEdit';
+import Map from './features/Map';
 import AppLayout from './layout/AppLayout';
 import PublicLayout from './layout/PublicLayout';
 import ProtectedRoute from './common/components/ProtectedRoute';
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
           { path: '/bikes', element: <Bikes /> },
           { path: '/bikes/new', element: <BikeCreate /> },
           { path: '/bikes/:id/edit', element: <BikeEdit /> },
+          { path: '/map', element: <Map /> },
         ],
       },
     ],

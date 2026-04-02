@@ -2,7 +2,10 @@ import { Outlet } from 'react-router-dom';
 import Navbar from '../common/components/Navbar';
 import Sidebar from '../common/components/Sidebar';
 
-const SIDEBAR_LINKS = [{ to: '/bikes', label: 'Bikes' }];
+const SIDEBAR_LINKS = [
+  { to: '/bikes', label: 'Bikes' },
+  { to: '/map', label: 'Map' },
+];
 
 export default function AppLayout() {
   return (
