@@ -364,6 +364,8 @@ class RabbitMQService:
                     bike_id,
                     target_state.value,
                 )
+                self.publish_bike_status_updated(bike_id, target_state)
+                logger.info(f"[RABBITMQ] INFO model=async queue={method.routing_key} bikeId={bike_id} published bike_status_updated")
         except Exception as e:
             logger.error(
                 "[RABBITMQ] ERROR model=async queue=%s bike_id=%s "
