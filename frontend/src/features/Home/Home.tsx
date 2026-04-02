@@ -6,7 +6,9 @@ export default function Home() {
 
   return (
     <div className="p-12">
-      <h1 className="text-3xl font-semibold text-text mb-6">Bike Network System</h1>
+      <h1 className="text-3xl font-semibold text-text mb-6">
+        Bike Network System
+      </h1>
       {idToken ? (
         <div>
           <p className="text-lg text-text-muted mb-6">
@@ -16,7 +18,7 @@ export default function Home() {
             to="/bikes"
             className="inline-block px-6 py-3 bg-brand-500 text-white rounded hover:bg-brand-600 no-underline"
           >
-            Manage Bikes
+            Explore
           </Link>
         </div>
       ) : (

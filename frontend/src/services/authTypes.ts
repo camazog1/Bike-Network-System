@@ -12,6 +12,7 @@ export interface AuthSession {
 export interface AuthContextValue {
   user: AuthUser | null;
   idToken: string | null;
+  isAdmin: boolean;
   login(session: AuthSession): void;
   logout(): void;
 }

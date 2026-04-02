@@ -5,6 +5,10 @@ import Sidebar from '../common/components/Sidebar';
 const SIDEBAR_LINKS = [
   { to: '/bikes', label: 'Bikes' },
   { to: '/map', label: 'Map' },
+  { to: '/rentals', label: 'Rentals' },
+  { to: '/events', label: 'Events' },
+  { to: '/routes', label: 'Routes' },
+  { to: '/competitions', label: 'Competitions' },
 ];
 
 export default function AppLayout() {

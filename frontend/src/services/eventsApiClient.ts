@@ -1,10 +1,10 @@
 import axios from "axios";
 
-const bikesApiClient = axios.create({
-  baseURL: import.meta.env.VITE_BIKE_API,
+const eventsApiClient = axios.create({
+  baseURL: import.meta.env.VITE_EVENTS_API,
 });
 
-bikesApiClient.interceptors.request.use((config) => {
+eventsApiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("bns_id_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -12,7 +12,7 @@ bikesApiClient.interceptors.request.use((config) => {
   return config;
 });
 
-bikesApiClient.interceptors.response.use(
+eventsApiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -24,4 +24,4 @@ bikesApiClient.interceptors.response.use(
   },
 );
 
-export default bikesApiClient;
+export default eventsApiClient;
