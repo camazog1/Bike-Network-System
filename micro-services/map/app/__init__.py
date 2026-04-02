@@ -28,6 +28,10 @@ def create_app(config=None):
     from app.routes.queries.health import health_bp
     from app.routes.queries.locations import locations_queries_bp
 
+    # Optional Firebase authentication (used to protect read endpoints).
+    from app.auth import ensure_firebase_initialized
+    ensure_firebase_initialized(app)
+
     app.register_blueprint(health_bp)
     app.register_blueprint(locations_queries_bp)
 

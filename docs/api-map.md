@@ -9,7 +9,7 @@ Microservicio de geolocalización del **Bike Network System**. Expone REST JSON 
 
 ## Autenticación (HTTP)
 
-Las historias de usuario del mapa describen un endpoint de **solo lectura** de ubicaciones disponibles. La decisión de **exigir JWT** en ese `GET` o dejarlo público debe alinearse con el documento de NFR del proyecto (p. ej. RNF-04). Si el endpoint queda protegido, el cliente debe enviar:
+Los endpoints de solo lectura del Map están **protegidos** y requieren un token **Bearer**. El cliente debe enviar:
 
 `Authorization: Bearer <JWT>`
 
