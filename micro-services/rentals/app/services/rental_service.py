@@ -66,6 +66,11 @@ def return_rental(rental_id: str) -> dict:
     return rental.to_dict()
 
 
+def get_rentals_by_user(user_id: str) -> list[dict]:
+    rentals = Rental.query.filter_by(user_id=user_id).all()
+    return [r.to_dict() for r in rentals]
+
+
 # Excepciones propias del dominio
 class BikeNotFoundException(Exception):
     pass

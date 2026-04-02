@@ -3,6 +3,7 @@ from app.auth.decorators import require_authentication
 from app.services.rental_service import (
     create_rental,
     return_rental,
+    get_rentals_by_user,
     BikeNotFoundException,
     BikeUnavailableException,
     RentalNotFoundException,
@@ -42,6 +43,20 @@ def create_rental_route():
 
     except BikeUnavailableException as e:
         return jsonify({"error": str(e)}), 409
+
+    except Exception:
+        return jsonify({"error": "Error interno del servidor."}), 500
+
+
+@rental_bp.route("/api/v1/rental/user/<string:user_id>", methods=["GET"])
+@require_authentication
+def get_user_rentals_route(user_id):
+    if g.current_user["uid"] != user_id:
+        return jsonify({"error": "No autorizado para ver las rentas de este usuario."}), 403
+
+    try:
+        rentals = get_rentals_by_user(user_id=user_id)
+        return jsonify(rentals), 200
 
     except Exception:
         return jsonify({"error": "Error interno del servidor."}), 500
