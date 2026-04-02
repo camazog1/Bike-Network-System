@@ -23,7 +23,7 @@ COPY --from=builder /build/main.py ./
 COPY --from=builder /build/migrations ./migrations
 COPY entrypoint.sh ./
 
-RUN chmod +x entrypoint.sh
+RUN apt-get update && apt-get install -y dos2unix && dos2unix entrypoint.sh && chmod +x entrypoint.sh
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV FLASK_APP=main.py
