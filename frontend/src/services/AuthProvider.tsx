@@ -22,8 +22,23 @@ function computeIsAdmin(token: string | null): boolean {
   return payload.role === "admin";
 }
 
+/** Restore session user from JWT so queries work after full page reload. */
+function userFromStoredToken(token: string | null): AuthUser | null {
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  const uid = payload.sub;
+  if (typeof uid !== "string" || !uid) return null;
+  const email = payload.email;
+  return {
+    uid,
+    email: typeof email === "string" ? email : "",
+  };
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    userFromStoredToken(localStorage.getItem("bns_id_token")),
+  );
   const [idToken, setIdToken] = useState<string | null>(() =>
     localStorage.getItem("bns_id_token"),
   );

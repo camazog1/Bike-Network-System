@@ -1,7 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { BikePayload } from "../types";
+import { BIKE_STATE_OPTIONS, BIKE_TYPE_OPTIONS } from "../types";
 import type { ApiError } from "../../../types";
+import BikeLocationPicker from "./BikeLocationPicker";
+
+const DEFAULT_LAT = 6.244;
+const DEFAULT_LNG = -75.5812;
 
 interface BikeFormProps {
   defaultValues?: Partial<BikePayload>;
@@ -17,21 +22,43 @@ export default function BikeForm({
   error,
 }: BikeFormProps) {
   const [brand, setBrand] = useState(defaultValues?.brand ?? "");
-  const [type, setType] = useState(defaultValues?.type ?? "");
+  const initialType =
+    defaultValues?.type &&
+    BIKE_TYPE_OPTIONS.includes(defaultValues.type as (typeof BIKE_TYPE_OPTIONS)[number])
+      ? defaultValues.type
+      : "";
+  const [type, setType] = useState(initialType);
   const [colour, setColour] = useState(defaultValues?.colour ?? "");
   const [latitude, setLatitude] = useState(
-    defaultValues?.latitude?.toString() ?? "",
+    () =>
+      defaultValues?.latitude != null
+        ? String(defaultValues.latitude)
+        : String(DEFAULT_LAT),
   );
   const [longitude, setLongitude] = useState(
-    defaultValues?.longitude?.toString() ?? "",
+    () =>
+      defaultValues?.longitude != null
+        ? String(defaultValues.longitude)
+        : String(DEFAULT_LNG),
   );
-  const [state, setStatus] = useState(defaultValues?.state ?? "");
+
+  function setPositionFromMap(lat: number, lng: number) {
+    setLatitude(lat.toFixed(6));
+    setLongitude(lng.toFixed(6));
+  }
+  const initialStateRaw = defaultValues?.state ?? "Free";
+  const initialState = BIKE_STATE_OPTIONS.includes(
+    initialStateRaw as (typeof BIKE_STATE_OPTIONS)[number],
+  )
+    ? initialStateRaw
+    : "Free";
+  const [state, setStatus] = useState(initialState);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function validate(): boolean {
     const errors: Record<string, string> = {};
     if (!brand.trim()) errors.brand = "Brand is required";
-    if (!type.trim()) errors.type = "Type is required";
+    if (!type.trim()) errors.type = "Select a bike type";
     if (!colour.trim()) errors.colour = "Colour is required";
     if (!latitude.trim()) {
       errors.latitude = "Latitude is required";
@@ -65,7 +92,7 @@ export default function BikeForm({
       latitude: Number(latitude),
       longitude: Number(longitude),
     };
-    if (state.trim()) payload.state = state.trim();
+    payload.state = state;
     onSubmit(payload);
   }
 
@@ -81,7 +108,7 @@ export default function BikeForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 w-full max-w-lg text-left"
+      className="flex flex-col gap-4 w-full max-w-2xl text-left"
     >
       {error && error.error !== "VALIDATION_ERROR" && (
         <div className="text-danger-400 text-sm p-2 border border-danger-400 rounded">
@@ -106,12 +133,18 @@ export default function BikeForm({
 
       <label>
         <div className="text-sm font-medium text-text mb-1">Type *</div>
-        <input
-          type="text"
+        <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:border-brand-300"
-        />
+          className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:border-brand-300 bg-surface text-text"
+        >
+          <option value="">Select type…</option>
+          {BIKE_TYPE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
         {(fieldErrors.type || getApiFieldError("type")) && (
           <div className="text-danger-400 text-xs mt-1">
             {fieldErrors.type || getApiFieldError("type")}
@@ -134,47 +167,35 @@ export default function BikeForm({
         )}
       </label>
 
-      <label>
-        <div className="text-sm font-medium text-text mb-1">Latitude *</div>
-        <input
-          type="number"
-          step="any"
-          value={latitude}
-          onChange={(e) => setLatitude(e.target.value)}
-          className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:border-brand-300"
-        />
-        {(fieldErrors.latitude || getApiFieldError("latitude")) && (
-          <div className="text-danger-400 text-xs mt-1">
-            {fieldErrors.latitude || getApiFieldError("latitude")}
-          </div>
-        )}
-      </label>
+      <BikeLocationPicker
+        latitude={latitude}
+        longitude={longitude}
+        onChange={setPositionFromMap}
+      />
+      {(fieldErrors.latitude || getApiFieldError("latitude")) && (
+        <div className="text-danger-400 text-xs -mt-2">
+          {fieldErrors.latitude || getApiFieldError("latitude")}
+        </div>
+      )}
+      {(fieldErrors.longitude || getApiFieldError("longitude")) && (
+        <div className="text-danger-400 text-xs -mt-2">
+          {fieldErrors.longitude || getApiFieldError("longitude")}
+        </div>
+      )}
 
       <label>
-        <div className="text-sm font-medium text-text mb-1">Longitude *</div>
-        <input
-          type="number"
-          step="any"
-          value={longitude}
-          onChange={(e) => setLongitude(e.target.value)}
-          className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:border-brand-300"
-        />
-        {(fieldErrors.longitude || getApiFieldError("longitude")) && (
-          <div className="text-danger-400 text-xs mt-1">
-            {fieldErrors.longitude || getApiFieldError("longitude")}
-          </div>
-        )}
-      </label>
-
-      <label>
-        <div className="text-sm font-medium text-text mb-1">Status</div>
-        <input
-          type="text"
+        <div className="text-sm font-medium text-text mb-1">Status *</div>
+        <select
           value={state}
           onChange={(e) => setStatus(e.target.value)}
-          placeholder="e.g. Free, Rented"
-          className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:border-brand-300"
-        />
+          className="w-full px-3 py-2 border border-border rounded focus:outline-none focus:border-brand-300 bg-surface text-text"
+        >
+          {BIKE_STATE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
       </label>
 
       <button
